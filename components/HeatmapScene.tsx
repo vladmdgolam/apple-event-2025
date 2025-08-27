@@ -50,20 +50,13 @@ export const HeatmapScene = () => {
     }
 
     const base = Math.floor(Math.random() * 360)
-    const steps = [0, 15, 35, 55, 85, 140, 200]
+    // Generate 6 colors for color2..color7; keep color1 (black) intact
+    const steps = [15, 35, 55, 85, 140, 200]
     const palette = steps.map((step, i) =>
       hslToHex((base + step) % 360, 80 - i * 4, 50 + (i - 3) * 3)
     )
 
-    const keys = [
-      "color1",
-      "color2",
-      "color3",
-      "color4",
-      "color5",
-      "color6",
-      "color7",
-    ] as const
+    const keys = ["color2", "color3", "color4", "color5", "color6", "color7"] as const
 
     keys.forEach((key, i) => {
       try {
