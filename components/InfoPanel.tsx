@@ -1,10 +1,34 @@
 import Link from "next/link"
 
-export const InfoPanel = () => {
+type InfoPanelProps = {
+  onToggleControls?: () => void
+  onRandomizeColors?: () => void
+}
+
+export const InfoPanel = ({ onToggleControls, onRandomizeColors }: InfoPanelProps) => {
   return (
     <div className="fixed top-0 left-4 text-white text-sm font-mono z-10 pt-[calc(16px+env(safe-area-inset-top))]">
       <div>Apple Event experience recreation</div>
-      <div>press L to toggle controls</div>
+      <div>
+        press L to toggle
+        {" "}
+        <button
+          type="button"
+          onClick={onToggleControls}
+          className="underline inline px-0 py-0 m-0 bg-transparent border-0 cursor-pointer text-inherit"
+        >
+          controls
+        </button>
+      </div>
+      <div>
+        <button
+          type="button"
+          onClick={onRandomizeColors}
+          className="underline inline px-0 py-0 m-0 bg-transparent border-0 cursor-pointer text-inherit"
+        >
+          randomize colors
+        </button>
+      </div>
       <div>
         ported by{" "}
         <Link className="underline" target="_blank" href="https://vladik.xyz/">
