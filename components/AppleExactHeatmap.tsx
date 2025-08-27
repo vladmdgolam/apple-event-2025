@@ -35,7 +35,7 @@ function DrawRenderer({
   fadeDamping: number
   radiusSize: number
 }) {
-  const { gl } = useThree()
+  const { gl, size: canvasSize } = useThree()
 
   // Apple's exact radius (line 42 in clean.js) - use controllable value
   const dynamicRadius = radiusSize
@@ -65,7 +65,7 @@ function DrawRenderer({
         uRadius: { value: [-8, 0.9, dynamicRadius] }, // Use mobile-aware radius
         uPosition: { value: [0, 0] },
         uDirection: { value: [0, 0, 0, 0] },
-        uResolution: { value: [size, size, 0] },
+        uResolution: { value: [canvasSize.width, canvasSize.height, 1] },
         uTexture: { value: renderTargets.previous.texture },
         uSizeDamping: { value: sizeDamping },
         uFadeDamping: { value: fadeDamping },
@@ -81,7 +81,7 @@ function DrawRenderer({
     scene.add(mesh)
 
     return { scene, camera, material }
-  }, [size, renderTargets, dynamicRadius, sizeDamping, fadeDamping, radiusSize])
+  }, [size, renderTargets, dynamicRadius, sizeDamping, fadeDamping, radiusSize, canvasSize])
 
   // Update radius when it changes
   useEffect(() => {
