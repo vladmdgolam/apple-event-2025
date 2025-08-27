@@ -145,7 +145,7 @@ void main() {
   finalColor *= fade2;
   finalColor = mix(vec3(0.0), finalColor, a);
 
-  gl_FragColor = vec4(finalColor, logo * opacity);
+  gl_FragColor = vec4(finalColor, 1.0);
 }
 `
 
@@ -295,17 +295,11 @@ function DrawRenderer({
 function AppleHeatMesh({
   drawTexture,
   mouse,
-  heatAmount,
-  onPointerMove,
-  onPointerDown,
-  onPointerUp
+  heatAmount
 }: {
   drawTexture: THREE.Texture | null
   mouse: [number, number]
   heatAmount: number
-  onPointerMove: (e: ThreeEvent<PointerEvent>) => void
-  onPointerDown: (e: ThreeEvent<PointerEvent>) => void
-  onPointerUp: (e: ThreeEvent<PointerEvent>) => void
 }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const timeRef = useRef(0)
@@ -460,9 +454,6 @@ function AppleHeatMesh({
       ref={meshRef} 
       position={[0, 0, 0]}
       scale={[1, 1, 1]}
-      onPointerMove={onPointerMove}
-      onPointerDown={onPointerDown}
-      onPointerUp={onPointerUp}
     >
       <planeGeometry args={[1, 1]} />
       <primitive object={material} />
@@ -470,7 +461,7 @@ function AppleHeatMesh({
   )
 }
 
-function Scene() {
+function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement> }) {
   const [mouse, setMouse] = useState<[number, number]>([0, 0])
   const [isHolding, setIsHolding] = useState(false)
   const [heatAmount, setHeatAmount] = useState(0)
@@ -502,27 +493,61 @@ function Scene() {
     }
   }, [camera, size])
 
-  const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
-    // Apple's exact coordinate system: 2 * (normalizedPosition - 0.5)
-    // e.uv gives us normalized UV coordinates [0,1], convert to Apple's [-1,1] system
-    const x = 2 * (e.uv.x - 0.5)
-    const y = 2 * -(e.uv.y - 0.5)  // Apple inverts Y
-    
-    setMouse([x, y])
-    
-    if (isHolding) {
-      heatRef.current += 0.5 * 0.016 * 60  // Apple's exact heat buildup: 0.5 * deltaTime * 60
-      setHeatAmount(Math.min(1.3, heatRef.current))
+  // Apple's gesture controller approach - DOM-based mouse handling
+  const handleDOMPointerMove = useCallback((e: PointerEvent) => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      const clientX = e.clientX - rect.x
+      const clientY = e.clientY - rect.y
+      
+      // Apple's exact normalization (line 228-229 in clean.js)
+      const normalizedX = clientX / rect.width
+      const normalizedY = clientY / rect.height
+      
+      // Apple's coordinate conversion (line 496-497)
+      const x = 2 * (normalizedX - 0.5)
+      const y = 2 * -(normalizedY - 0.5)  // Apple inverts Y
+      
+      setMouse([x, y])
+      
+      if (isHolding) {
+        heatRef.current += 0.5 * 0.016 * 60  // Apple's exact heat buildup
+        setHeatAmount(Math.min(1.3, heatRef.current))
+      }
     }
-  }, [isHolding])
+  }, [isHolding, containerRef])
 
-  const handlePointerDown = useCallback(() => {
+  const handleDOMPointerDown = useCallback(() => {
     setIsHolding(true)
   }, [])
 
-  const handlePointerUp = useCallback(() => {
+  const handleDOMPointerUp = useCallback(() => {
     setIsHolding(false)
   }, [])
+
+  const handleDOMPointerLeave = useCallback(() => {
+    setIsHolding(false)
+    heatRef.current = 0
+    setHeatAmount(0)
+  }, [])
+
+  // Set up DOM event listeners like Apple
+  useEffect(() => {
+    const canvas = containerRef.current
+    if (!canvas) return
+
+    canvas.addEventListener('pointermove', handleDOMPointerMove)
+    canvas.addEventListener('pointerdown', handleDOMPointerDown)
+    canvas.addEventListener('pointerup', handleDOMPointerUp)
+    canvas.addEventListener('pointerleave', handleDOMPointerLeave)
+
+    return () => {
+      canvas.removeEventListener('pointermove', handleDOMPointerMove)
+      canvas.removeEventListener('pointerdown', handleDOMPointerDown)
+      canvas.removeEventListener('pointerup', handleDOMPointerUp)
+      canvas.removeEventListener('pointerleave', handleDOMPointerLeave)
+    }
+  }, [handleDOMPointerMove, handleDOMPointerDown, handleDOMPointerUp, handleDOMPointerLeave, containerRef])
 
   useFrame(() => {
     if (!isHolding && heatRef.current > 0) {
@@ -537,11 +562,18 @@ function Scene() {
     return [0, 0, 0, 100] // This would be calculated from mouse movement in Apple's code
   }, [])
 
+  // Apple's updatePosition conversion: from [-1,1] to [0,1]
+  const drawPosition = useMemo<[number, number]>(() => {
+    const x = 0.5 * mouse[0] + 0.5  // Apple's exact conversion (line 72)
+    const y = 0.5 * mouse[1] + 0.5  // Apple's exact conversion (line 72)
+    return [x, y]
+  }, [mouse])
+
   return (
     <>
       <DrawRenderer
         size={256}
-        position={mouse}
+        position={drawPosition}
         direction={direction}
         drawAmount={heatAmount}
         onTextureUpdate={setDrawTexture}
@@ -550,15 +582,14 @@ function Scene() {
         drawTexture={drawTexture}
         mouse={mouse}
         heatAmount={heatAmount}
-        onPointerMove={handlePointerMove}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
       />
     </>
   )
 }
 
 export function AppleExactHeatmap() {
+  const containerRef = useRef<HTMLDivElement>(null)
+
   return (
     <div className="w-full h-screen bg-black relative flex items-center justify-center">
       <div className="absolute top-4 left-4 text-white text-sm font-mono z-10">
@@ -567,7 +598,10 @@ export function AppleExactHeatmap() {
       </div>
 
       {/* Square canvas like Apple's implementation */}
-      <div className="w-[80vmin] h-[80vmin]">
+      <div 
+        ref={containerRef}
+        className="w-[80vmin] h-[80vmin] touch-none"
+      >
         <Canvas
           orthographic
           camera={{ 
@@ -580,12 +614,12 @@ export function AppleExactHeatmap() {
             far: 1
           }}
           gl={{ 
-            antialias: true, 
+            antialias: false, 
             alpha: true,
             powerPreference: 'high-performance'
           }}
         >
-          <Scene />
+          <Scene containerRef={containerRef} />
         </Canvas>
       </div>
     </div>
