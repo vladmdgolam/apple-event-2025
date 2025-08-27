@@ -2,7 +2,7 @@ import Link from "next/link"
 
 export const InfoPanel = () => {
   return (
-    <div className="absolute top-4 left-4 text-white text-sm font-mono z-10">
+    <div className="absolute top-0 left-4 text-white text-sm font-mono z-10 pt-[calc(16px+env(safe-area-inset-top))]">
       <div>Apple Event experience recreation</div>
       <div>press L to toggle controls</div>
       <div>
