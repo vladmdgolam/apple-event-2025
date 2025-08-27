@@ -4,6 +4,14 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  turbopack: {
+    rules: {
+      '*.{glsl,vs,fs,vert,frag}': {
+        loaders: ['raw-loader'],
+        as: '*.js'
+      }
+    }
+  },
   webpack: (config) => {
     // Support shader files with raw-loader
     config.module.rules.push({
