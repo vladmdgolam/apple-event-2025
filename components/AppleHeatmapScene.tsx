@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber'
+import { Canvas, useFrame, useThree, useLoader, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { GestureController } from './GestureController'
 
 const heatVertexShader = `
 precision highp float;
@@ -85,10 +84,20 @@ void main() {
 }
 `
 
-function AppleLogoHeatmap() {
+function AppleLogoHeatmap({ 
+  mouse, 
+  heatAmount, 
+  onPointerMove, 
+  onPointerDown, 
+  onPointerUp 
+}: { 
+  mouse: [number, number]
+  heatAmount: number
+  onPointerMove: (e: ThreeEvent<PointerEvent>) => void
+  onPointerDown: (e: ThreeEvent<PointerEvent>) => void
+  onPointerUp: (e: ThreeEvent<PointerEvent>) => void
+}) {
   const meshRef = useRef<THREE.Mesh>(null)
-  const [mouse, setMouse] = useState([0, 0])
-  const [heatAmount, setHeatAmount] = useState(0)
   const [opacity, setOpacity] = useState(1.0)
   const [power, setPower] = useState(1.0)
   const timeRef = useRef(0)
@@ -165,7 +174,13 @@ function AppleLogoHeatmap() {
   })
 
   return (
-    <mesh ref={meshRef} scale={[3, 3, 1]}>
+    <mesh 
+      ref={meshRef} 
+      scale={[3, 3, 1]}
+      onPointerMove={onPointerMove}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+    >
       <planeGeometry args={[1, 1, 64, 64]} />
       <primitive object={material} />
     </mesh>
@@ -178,42 +193,36 @@ interface SceneProps {
 }
 
 function Scene({ onMouseUpdate, onHeatUpdate }: SceneProps) {
-  const [mouse, setMouse] = useState([0, 0])
+  const [mouse, setMouse] = useState<[number, number]>([0, 0])
   const [isHolding, setIsHolding] = useState(false)
   const [heatAmount, setHeatAmount] = useState(0)
   const heatAccumulator = useRef(0)
-  const { camera } = useThree()
+  const { camera, viewport } = useThree()
 
-  const handleGestureMove = useCallback((data: any) => {
-    const normalizedX = 2 * (data.normalizedPosition.x - 0.5)
-    const normalizedY = 2 * -(data.normalizedPosition.y - 0.5)
+  const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
+    // Convert Three.js event to normalized coordinates (-1 to 1)
+    const normalizedX = (e.point.x / (viewport.width / 2))
+    const normalizedY = (e.point.y / (viewport.height / 2))
     
     const newMouse: [number, number] = [normalizedX, normalizedY]
     setMouse(newMouse)
     onMouseUpdate?.(newMouse)
     
     if (isHolding) {
-      heatAccumulator.current += 0.03 // Slower buildup like Apple's
+      heatAccumulator.current += 0.05 // Heat buildup rate
       const newHeat = Math.min(1.3, heatAccumulator.current)
       setHeatAmount(newHeat)
       onHeatUpdate?.(newHeat)
     }
-  }, [isHolding, onMouseUpdate, onHeatUpdate])
+  }, [isHolding, onMouseUpdate, onHeatUpdate, viewport])
 
-  const handleGestureDown = useCallback(() => {
+  const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
     setIsHolding(true)
   }, [])
 
-  const handleGestureUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {
     setIsHolding(false)
   }, [])
-
-  const handleGestureLeave = useCallback(() => {
-    setIsHolding(false)
-    heatAccumulator.current = 0
-    setHeatAmount(0)
-    onHeatUpdate?.(0)
-  }, [onHeatUpdate])
 
   useFrame(() => {
     if (!isHolding && heatAmount > 0) {
@@ -233,7 +242,13 @@ function Scene({ onMouseUpdate, onHeatUpdate }: SceneProps) {
 
   return (
     <>
-      <AppleLogoHeatmap />
+      <AppleLogoHeatmap 
+        mouse={mouse}
+        heatAmount={heatAmount}
+        onPointerMove={handlePointerMove}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+      />
     </>
   )
 }
@@ -250,34 +265,26 @@ export function AppleHeatmapScene() {
         <div>Hold and drag to create heat effect</div>
       </div>
 
-      <GestureController
-        onGestureMove={() => {}}
-        onGestureDown={() => {}}
-        onGestureUp={() => {}}
-        onGestureLeave={() => {}}
-        resetOnLeave={false}
-      >
-        <div className="w-96 h-96">
-          <Canvas
-            camera={{ 
-              position: [0, 0, 2], 
-              fov: 50,
-              near: 0.1,
-              far: 1000
-            }}
-            gl={{ 
-              antialias: true, 
-              alpha: true,
-              powerPreference: 'high-performance'
-            }}
-          >
-            <Scene 
-              onMouseUpdate={(mouse) => setDebugInfo(prev => ({ ...prev, mouse }))}
-              onHeatUpdate={(heat) => setDebugInfo(prev => ({ ...prev, heat }))}
-            />
-          </Canvas>
-        </div>
-      </GestureController>
+      <div className="w-96 h-96">
+        <Canvas
+          camera={{ 
+            position: [0, 0, 2], 
+            fov: 50,
+            near: 0.1,
+            far: 1000
+          }}
+          gl={{ 
+            antialias: true, 
+            alpha: true,
+            powerPreference: 'high-performance'
+          }}
+        >
+          <Scene 
+            onMouseUpdate={(mouse) => setDebugInfo(prev => ({ ...prev, mouse }))}
+            onHeatUpdate={(heat) => setDebugInfo(prev => ({ ...prev, heat }))}
+          />
+        </Canvas>
+      </div>
     </div>
   )
 }
