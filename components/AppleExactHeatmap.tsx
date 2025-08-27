@@ -460,7 +460,7 @@ function AppleHeatMesh({
   return (
     <mesh 
       ref={meshRef} 
-      scale={[3, 3, 1]}
+      scale={[1.5, 1.5, 1]}
       onPointerMove={onPointerMove}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
@@ -504,9 +504,10 @@ function Scene() {
   }, [camera, size])
 
   const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
-    // Convert to normalized coordinates like Apple
-    const x = e.point.x / 2  // Apple uses this scaling
-    const y = e.point.y / 2
+    // Convert Three.js world coordinates to normalized UV coordinates
+    // e.point gives us world coordinates, we need to map to [0,1] range
+    const x = (e.point.x / 1.5 + 1) * 0.5  // Scale by mesh size and normalize to [0,1]
+    const y = (e.point.y / 1.5 + 1) * 0.5  // Scale by mesh size and normalize to [0,1]
     
     setMouse([x, y])
     
@@ -579,7 +580,7 @@ export function AppleExactHeatmap() {
             far: 1
           }}
           gl={{ 
-            antialias: false, 
+            antialias: true, 
             alpha: true,
             powerPreference: 'high-performance'
           }}
