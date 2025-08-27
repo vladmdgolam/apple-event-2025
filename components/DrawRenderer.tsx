@@ -3,6 +3,7 @@
 import drawFragmentShader from "@/shaders/draw.frag"
 import drawVertexShader from "@/shaders/draw.vert"
 import { useFrame, useThree } from "@react-three/fiber"
+import { useFBO } from "@react-three/drei"
 import { useEffect, useMemo } from "react"
 import {
   FloatType,
@@ -14,20 +15,15 @@ import {
   Scene,
   ShaderMaterial,
   Texture,
-  WebGLRenderTarget,
-  type RenderTargetOptions,
 } from "three"
 
-const renderTargetParams = {
+const fboParams = {
   type: FloatType,
   format: RGBAFormat,
-  internalFormat: "RGBA16F" as const, // Apple's exact internal format
   minFilter: LinearFilter,
   magFilter: LinearFilter,
-  generateMipmaps: true,
-  depthBuffer: false,
-  stencilBuffer: false,
-} as RenderTargetOptions
+}
+
 
 export const DrawRenderer = ({
   size = 256,
@@ -48,26 +44,27 @@ export const DrawRenderer = ({
   fadeDamping: number
   radiusSize: number
 }) => {
-  const { gl, size: canvasSize } = useThree()
+  const { size: canvasSize } = useThree()
 
   // Apple's exact radius - use controllable value
   const dynamicRadius = radiusSize
 
-  const renderTargets = useMemo(() => {
-    const rtA = new WebGLRenderTarget(size, size, renderTargetParams)
-    const rtB = new WebGLRenderTarget(size, size, renderTargetParams)
-    return { current: rtA, previous: rtB }
-  }, [size, renderTargetParams])
+  const fboA = useFBO(size, size, fboParams)
+  const fboB = useFBO(size, size, fboParams)
+  
+  const renderTargets = useMemo(() => ({ 
+    current: fboA, 
+    previous: fboB 
+  }), [fboA, fboB])
 
-  const { scene, camera, material } = useMemo(() => {
-    // Apple's exact draw renderer setup
-    const scene = new Scene()
-    const camera = new OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0.1, 10)
-    camera.position.z = 1
+  const { drawScene, drawCamera, material } = useMemo(() => {
+    const drawScene = new Scene()
+    const drawCamera = new OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0.1, 10)
+    drawCamera.position.z = 1
 
     const material = new ShaderMaterial({
       uniforms: {
-        uRadius: { value: [-8, 0.9, dynamicRadius] }, // Use mobile-aware radius
+        uRadius: { value: [-8, 0.9, dynamicRadius] },
         uPosition: { value: [0, 0] },
         uDirection: { value: [0, 0, 0, 0] },
         uResolution: { value: [canvasSize.width, canvasSize.height, 1] },
@@ -83,12 +80,12 @@ export const DrawRenderer = ({
     })
 
     const mesh = new Mesh(new PlaneGeometry(1, 1), material)
-    scene.add(mesh)
+    drawScene.add(mesh)
 
-    return { scene, camera, material }
-  }, [size, renderTargets, dynamicRadius, sizeDamping, fadeDamping, radiusSize, canvasSize])
+    return { drawScene, drawCamera, material }
+  }, [renderTargets, dynamicRadius, sizeDamping, fadeDamping, canvasSize])
 
-  // Update radius when it changes
+  // Update uniforms
   useEffect(() => {
     material.uniforms.uRadius.value[2] = dynamicRadius
   }, [material, dynamicRadius])
@@ -99,8 +96,7 @@ export const DrawRenderer = ({
     material.uniforms.uDraw.value = drawAmount
   }, [material, position, direction, drawAmount])
 
-  useFrame(() => {
-    // Ping-pong rendering like Apple
+  useFrame(({ gl }) => {
     const currentTarget = renderTargets.current
     const previousTarget = renderTargets.previous
 
@@ -109,10 +105,9 @@ export const DrawRenderer = ({
     const originalTarget = gl.getRenderTarget()
     gl.setRenderTarget(currentTarget)
     gl.clear()
-    gl.render(scene, camera)
+    gl.render(drawScene, drawCamera)
     gl.setRenderTarget(originalTarget)
 
-    // Swap targets
     const temp = renderTargets.current
     renderTargets.current = renderTargets.previous
     renderTargets.previous = temp
