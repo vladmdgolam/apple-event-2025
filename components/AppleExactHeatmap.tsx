@@ -492,9 +492,13 @@ export function AppleExactHeatmap() {
   }, [])
 
   return (
-    <div className="w-full h-screen bg-black relative flex items-center justify-center">
+    <div className="w-full h-screen bg-black relative flex items-center justify-center select-none">
       <Leva hidden={levaHidden} />
-      <div className="absolute top-4 left-4 text-white text-sm font-mono z-10">
+      <div
+        className="absolute left-4 text-white text-sm font-mono z-10 select-text"
+        style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}
+      >
+        <div>Apple Event experience recreation</div>
         <div>press L to toggle controls</div>
         <div>
           ported by{" "}
