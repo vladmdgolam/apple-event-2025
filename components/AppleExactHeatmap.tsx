@@ -24,7 +24,6 @@ function DrawRenderer({
   onTextureUpdate,
   sizeDamping,
   fadeDamping,
-  radiusMultiplier,
 }: {
   size?: number
   position: [number, number]
@@ -33,7 +32,6 @@ function DrawRenderer({
   onTextureUpdate: (texture: THREE.Texture) => void
   sizeDamping: number
   fadeDamping: number
-  radiusMultiplier: number
 }) {
   const { gl, size: canvasSize } = useThree()
 
@@ -42,8 +40,8 @@ function DrawRenderer({
   const baseRadius = isMobile() ? 350 : 220 // Apple's exact mobile vs desktop values
   const dynamicRadius = useMemo(() => {
     const aspectFactor = canvasSize.height / radiusRatio
-    return baseRadius * aspectFactor * radiusMultiplier
-  }, [canvasSize.height, radiusMultiplier])
+    return baseRadius * aspectFactor
+  }, [canvasSize.height])
 
   const renderTargets = useMemo(() => {
     const rtA = new THREE.WebGLRenderTarget(size, size, {
@@ -86,7 +84,7 @@ function DrawRenderer({
     scene.add(mesh)
 
     return { scene, camera, material }
-  }, [size, renderTargets, dynamicRadius, sizeDamping, fadeDamping, radiusMultiplier])
+  }, [size, renderTargets, dynamicRadius, sizeDamping, fadeDamping])
 
   // Update radius when it changes
   useEffect(() => {
@@ -331,7 +329,6 @@ function AppleHeatMesh({ drawTexture }: { drawTexture: THREE.Texture | null }) {
 
 function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
   const [mouse, setMouse] = useState<[number, number]>([0, 0])
-  const [isHolding, setIsHolding] = useState(false)
   const [heatAmount, setHeatAmount] = useState(0)
   const [drawTexture, setDrawTexture] = useState<THREE.Texture | null>(null)
   const heatRef = useRef(0)
@@ -341,13 +338,12 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
   const { camera, size } = useThree()
 
   // Get draw renderer controls
-  const { sizeDamping, fadeDamping, radiusMultiplier, heatSensitivity, heatDecay, speedThreshold } = useControls("Draw Renderer", {
+  const { sizeDamping, fadeDamping, heatSensitivity, heatDecay, speedThreshold } = useControls("Hover Heat", {
     sizeDamping: { value: 0.8, min: 0.0, max: 1.0, step: 0.01 },
     fadeDamping: { value: 0.98, min: 0.9, max: 1.0, step: 0.001 },
-    radiusMultiplier: { value: 1.0, min: 0.1, max: 3.0, step: 0.05 },
-    heatSensitivity: { value: 0.5, min: 0.1, max: 2.0, step: 0.05 },
+    heatSensitivity: { value: 1.5, min: 0.1, max: 5.0, step: 0.1 },
     heatDecay: { value: 0.95, min: 0.8, max: 0.99, step: 0.01 },
-    speedThreshold: { value: 0.01, min: 0.001, max: 0.1, step: 0.001 },
+    speedThreshold: { value: 0.001, min: 0.0001, max: 0.01, step: 0.0001 },
   })
 
   // Apple's exact camera setup for orthographic projection
@@ -397,8 +393,8 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
         const deltaY = y - lastMousePos.current[1]
         const speed = Math.sqrt(deltaX * deltaX + deltaY * deltaY) / (deltaTime + 1e-5)
 
-        // Apple's logic: set hold to true on movement (line 503 in clean.js)
-        if (speed > speedThreshold) {
+        // Apple's logic: set hold to true on ANY movement (line 503 in clean.js)
+        if (speed > speedThreshold || deltaX !== 0 || deltaY !== 0) {
           holdRef.current = true
         }
 
@@ -410,39 +406,7 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
     [containerRef, speedThreshold]
   )
 
-  const handleDOMPointerDown = useCallback(
-    (e: PointerEvent) => {
-      setIsHolding(true)
-      // Apple's touch handling: on touch start, immediately trigger both enter and down
-      // This matches lines 169-182 in clean.js where touch triggers multiple callbacks
-      if (e.pointerType === "touch") {
-        if (containerRef.current) {
-          const rect = containerRef.current.getBoundingClientRect()
-          const clientX = e.clientX - rect.x
-          const clientY = e.clientY - rect.y
-
-          const normalizedX = clientX / rect.width
-          const normalizedY = clientY / rect.height
-
-          const x = 2 * (normalizedX - 0.5)
-          const y = 2 * -(normalizedY - 0.5)
-
-          setMouse([x, y])
-          // Immediate heat activation for touch (like Apple's handleTouchStart)
-          heatRef.current = 0.1 // Give touch a small initial boost
-          setHeatAmount(heatRef.current)
-        }
-      }
-    },
-    [containerRef]
-  )
-
-  const handleDOMPointerUp = useCallback(() => {
-    setIsHolding(false)
-  }, [])
-
   const handleDOMPointerLeave = useCallback(() => {
-    setIsHolding(false)
     holdRef.current = false
     // Don't immediately reset heat - let it decay naturally like Apple does
   }, [])
@@ -453,27 +417,21 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
     if (!canvas) return
 
     canvas.addEventListener("pointermove", handleDOMPointerMove)
-    canvas.addEventListener("pointerdown", handleDOMPointerDown)
-    canvas.addEventListener("pointerup", handleDOMPointerUp)
     canvas.addEventListener("pointerleave", handleDOMPointerLeave)
 
     return () => {
       canvas.removeEventListener("pointermove", handleDOMPointerMove)
-      canvas.removeEventListener("pointerdown", handleDOMPointerDown)
-      canvas.removeEventListener("pointerup", handleDOMPointerUp)
       canvas.removeEventListener("pointerleave", handleDOMPointerLeave)
     }
   }, [
     handleDOMPointerMove,
-    handleDOMPointerDown,
-    handleDOMPointerUp,
     handleDOMPointerLeave,
     containerRef,
   ])
 
   useFrame((_, delta) => {
-    // Apple's logic: heat builds up when holding (moving) OR when mouse is pressed
-    if (holdRef.current || isHolding) {
+    // Apple's logic: heat builds up when moving
+    if (holdRef.current) {
       // Apple's exact heat buildup (line 571: this.heatUp += 0.5 * t * 60)
       const heatIncrease = heatSensitivity * delta * 60
       heatRef.current += heatIncrease
@@ -491,7 +449,7 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
       // Add a small delay before stopping hold to allow for natural movement
       setTimeout(() => {
         holdRef.current = false
-      }, 100)
+      }, 50)
     }
   })
 
@@ -517,7 +475,6 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
         onTextureUpdate={setDrawTexture}
         sizeDamping={sizeDamping}
         fadeDamping={fadeDamping}
-        radiusMultiplier={radiusMultiplier}
       />
       <AppleHeatMesh drawTexture={drawTexture} />
     </>
