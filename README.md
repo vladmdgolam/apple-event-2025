@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Apple 2025 Heatmap Recreation
+
+A pixel-perfect recreation of Apple's interactive heatmap effect from their 2025 homepage, built with Next.js, React Three Fiber, and custom WebGL shaders.
+
+## Features
+
+- **Exact Apple Implementation**: Reverse-engineered from Apple's original WebGL code
+- **Interactive Heat Effect**: Touch and drag to generate dynamic heat visualizations
+- **Mobile Optimized**: Touch-aware with mobile-specific radius calculations
+- **WebGL Shaders**: Custom vertex and fragment shaders matching Apple's exact implementation
+- **Ping-Pong Rendering**: Advanced render target switching for smooth heat decay
+
+## Tech Stack
+
+- **Next.js 15** - React framework
+- **React Three Fiber** - React renderer for Three.js
+- **Three.js** - 3D graphics library
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Install dependencies
+pnpm install
+
+# Start development server
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see the heatmap in action.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `components/AppleExactHeatmap.tsx` - Main heatmap component with Apple's exact implementation
+- `components/DrawRenderer.tsx` - Modular draw renderer component (WIP)
+- `app/page.tsx` - Main page showcasing the heatmap
 
-## Learn More
+## Implementation Details
 
-To learn more about Next.js, take a look at the following resources:
+This project recreates Apple's complex WebGL heatmap system including:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Draw Renderer**: Ping-pong render targets for heat accumulation
+- **Heat Shader**: Multi-color gradient system with 7 distinct colors
+- **Mobile Detection**: Touch-specific radius calculations (280px vs 220px)
+- **Gesture Handling**: DOM-based pointer events matching Apple's approach
+- **Frame-based Animation**: Proper delta timing for consistent heat buildup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Key Components
 
-## Deploy on Vercel
+### DrawRenderer
+- Ping-pong rendering between two render targets
+- Apple's exact shader uniforms and fade damping (0.98)
+- Mobile-aware radius calculations
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### HeatMesh  
+- 7-color gradient system matching Apple's palette
+- Video texture integration with Apple's exact blending
+- Heat accumulation with proper decay rates
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Assets Required
+
+Place these files in the `public/` directory:
+- `logo__dcojfwkzna2q.png` - Apple logo mask
+- `large_2x.mp4` - Background video texture
+
+## Development
+
+The project uses modern React patterns with Three.js:
+- Custom hooks for WebGL management
+- TypeScript for type safety
+- Modular component architecture
+- Performance optimizations with useMemo and useCallback
