@@ -501,8 +501,7 @@ export function AppleExactHeatmap() {
     <div className="w-full h-screen bg-black relative flex items-center justify-center">
       <Leva hidden={levaHidden} />
       <div className="absolute top-4 left-4 text-white text-sm font-mono z-10">
-        <div>Hold and drag for heat effect</div>
-        <div>Press L to toggle controls</div>
+        <div>press L to toggle controls</div>
         <div>
           ported by{" "}
           <Link className="underline" target="_blank" href="https://vladik.xyz/">
