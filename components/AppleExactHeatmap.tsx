@@ -7,6 +7,7 @@ import heatFragmentShader from "@/shaders/heat.frag"
 import heatVertexShader from "@/shaders/heat.vert"
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber"
 import { Leva, useControls } from "leva"
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 
@@ -335,13 +336,16 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
   const { camera, size } = useThree()
 
   // Get draw renderer controls
-  const { sizeDamping, fadeDamping, heatSensitivity, heatDecay, radiusSize } = useControls("Hover Heat", {
-    sizeDamping: { value: 0.8, min: 0.0, max: 1.0, step: 0.01 },
-    fadeDamping: { value: 0.98, min: 0.9, max: 1.0, step: 0.001 },
-    heatSensitivity: { value: 0.5, min: 0.1, max: 2.0, step: 0.05 },
-    heatDecay: { value: 0.95, min: 0.8, max: 0.99, step: 0.01 },
-    radiusSize: { value: 150, min: 50, max: 500, step: 10 },
-  })
+  const { sizeDamping, fadeDamping, heatSensitivity, heatDecay, radiusSize } = useControls(
+    "Hover Heat",
+    {
+      sizeDamping: { value: 0.8, min: 0.0, max: 1.0, step: 0.01 },
+      fadeDamping: { value: 0.98, min: 0.9, max: 1.0, step: 0.001 },
+      heatSensitivity: { value: 0.5, min: 0.1, max: 2.0, step: 0.05 },
+      heatDecay: { value: 0.95, min: 0.8, max: 0.99, step: 0.01 },
+      radiusSize: { value: 150, min: 50, max: 500, step: 10 },
+    }
+  )
 
   // Apple's exact camera setup for orthographic projection
   useEffect(() => {
@@ -411,11 +415,7 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
       canvas.removeEventListener("pointermove", handleDOMPointerMove)
       canvas.removeEventListener("pointerleave", handleDOMPointerLeave)
     }
-  }, [
-    handleDOMPointerMove,
-    handleDOMPointerLeave,
-    containerRef,
-  ])
+  }, [handleDOMPointerMove, handleDOMPointerLeave, containerRef])
 
   useFrame((_, delta) => {
     // Apple's logic: heat builds up when moving
@@ -431,7 +431,7 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
       heatRef.current = heatRef.current < 0.001 ? 0 : heatRef.current // Apple's cutoff
       setHeatAmount(heatRef.current)
     }
-    
+
     // Reset hold state after a short time if no movement (like Apple's implementation)
     if (holdRef.current) {
       // Add a small delay before stopping hold to allow for natural movement
@@ -492,6 +492,12 @@ export function AppleExactHeatmap() {
       <div className="absolute top-4 left-4 text-white text-sm font-mono z-10">
         <div>Hold and drag for heat effect</div>
         <div>Press L to toggle controls</div>
+        <div>
+          ported by{" "}
+          <Link className="underline" target="_blank" href="https://vladik.xyz/">
+            vladik.xyz
+          </Link>
+        </div>
       </div>
 
       {/* Square canvas like Apple's implementation */}

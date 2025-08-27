@@ -1,7 +1,8 @@
 {
-  "name": "start",
-  "version": "0.1.0",
+  "name": "apple shader",
+  "version": "1.0.0",
   "private": true,
+  "author": "Vlad Md Golam",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
