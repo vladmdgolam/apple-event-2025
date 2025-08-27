@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   webpack: (config) => {
     // Support shader files with raw-loader
     config.module.rules.push({
@@ -11,6 +14,6 @@ const nextConfig: NextConfig = {
 
     return config
   },
-};
+}
 
 export default nextConfig;

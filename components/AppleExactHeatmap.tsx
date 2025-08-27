@@ -11,12 +11,6 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 
-// Mobile detection utility like Apple's Ia.isMobile()
-const isMobile = () => {
-  if (typeof window === "undefined") return false
-  return "ontouchstart" in window || navigator.maxTouchPoints > 0
-}
-
 function DrawRenderer({
   size = 256,
   position,
@@ -45,8 +39,8 @@ function DrawRenderer({
     // Apple's exact render target settings from Da.createRenderTarget
     const rtA = new THREE.WebGLRenderTarget(size, size, {
       type: THREE.FloatType, // Apple's 'p' type
-      format: THREE.RGBAFormat, // Apple's 'm' format  
-      internalFormat: 'RGBA16F', // Apple's exact internal format
+      format: THREE.RGBAFormat, // Apple's 'm' format
+      internalFormat: "RGBA16F", // Apple's exact internal format
       minFilter: THREE.LinearFilter, // Apple's 'l'
       magFilter: THREE.LinearFilter, // Apple's 'o'
       generateMipmaps: true, // Apple sets this to true
@@ -56,7 +50,7 @@ function DrawRenderer({
     const rtB = new THREE.WebGLRenderTarget(size, size, {
       type: THREE.FloatType, // Apple's 'p' type
       format: THREE.RGBAFormat, // Apple's 'm' format
-      internalFormat: 'RGBA16F', // Apple's exact internal format  
+      internalFormat: "RGBA16F", // Apple's exact internal format
       minFilter: THREE.LinearFilter, // Apple's 'l'
       magFilter: THREE.LinearFilter, // Apple's 'o'
       generateMipmaps: true, // Apple sets this to true
