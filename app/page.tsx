@@ -1,5 +1,5 @@
-import { AppleHeatmapScene } from "@/components/AppleHeatmapScene"
+import { AppleExactHeatmap } from "@/components/AppleExactHeatmap"
 
 export default function Home() {
-  return <AppleHeatmapScene />
+  return <AppleExactHeatmap />
 }
