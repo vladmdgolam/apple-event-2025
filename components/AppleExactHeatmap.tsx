@@ -335,13 +335,19 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
   const [heatAmount, setHeatAmount] = useState(0)
   const [drawTexture, setDrawTexture] = useState<THREE.Texture | null>(null)
   const heatRef = useRef(0)
+  const lastMousePos = useRef<[number, number]>([0, 0])
+  const lastTime = useRef(performance.now())
+  const holdRef = useRef(false)
   const { camera, size } = useThree()
 
   // Get draw renderer controls
-  const { sizeDamping, fadeDamping, radiusMultiplier } = useControls("Draw Renderer", {
+  const { sizeDamping, fadeDamping, radiusMultiplier, heatSensitivity, heatDecay, speedThreshold } = useControls("Draw Renderer", {
     sizeDamping: { value: 0.8, min: 0.0, max: 1.0, step: 0.01 },
     fadeDamping: { value: 0.98, min: 0.9, max: 1.0, step: 0.001 },
     radiusMultiplier: { value: 1.0, min: 0.1, max: 3.0, step: 0.05 },
+    heatSensitivity: { value: 0.5, min: 0.1, max: 2.0, step: 0.05 },
+    heatDecay: { value: 0.95, min: 0.8, max: 0.99, step: 0.01 },
+    speedThreshold: { value: 0.01, min: 0.001, max: 0.1, step: 0.001 },
   })
 
   // Apple's exact camera setup for orthographic projection
@@ -368,7 +374,7 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
     }
   }, [camera, size])
 
-  // Apple's gesture controller approach - DOM-based mouse handling
+  // Apple's gesture controller approach - DOM-based mouse handling with speed detection
   const handleDOMPointerMove = useCallback(
     (e: PointerEvent) => {
       if (containerRef.current) {
@@ -384,10 +390,24 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
         const x = 2 * (normalizedX - 0.5)
         const y = 2 * -(normalizedY - 0.5) // Apple's exact Y inversion
 
+        // Calculate movement speed like Apple does
+        const currentTime = performance.now()
+        const deltaTime = currentTime - lastTime.current
+        const deltaX = x - lastMousePos.current[0]
+        const deltaY = y - lastMousePos.current[1]
+        const speed = Math.sqrt(deltaX * deltaX + deltaY * deltaY) / (deltaTime + 1e-5)
+
+        // Apple's logic: set hold to true on movement (line 503 in clean.js)
+        if (speed > speedThreshold) {
+          holdRef.current = true
+        }
+
         setMouse([x, y])
+        lastMousePos.current = [x, y]
+        lastTime.current = currentTime
       }
     },
-    [containerRef]
+    [containerRef, speedThreshold]
   )
 
   const handleDOMPointerDown = useCallback(
@@ -423,8 +443,8 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
 
   const handleDOMPointerLeave = useCallback(() => {
     setIsHolding(false)
-    heatRef.current = 0
-    setHeatAmount(0)
+    holdRef.current = false
+    // Don't immediately reset heat - let it decay naturally like Apple does
   }, [])
 
   // Set up DOM event listeners like Apple
@@ -452,16 +472,26 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
   ])
 
   useFrame((_, delta) => {
-    if (isHolding) {
+    // Apple's logic: heat builds up when holding (moving) OR when mouse is pressed
+    if (holdRef.current || isHolding) {
       // Apple's exact heat buildup (line 571: this.heatUp += 0.5 * t * 60)
-      const heatIncrease = 0.5 * delta * 60
+      const heatIncrease = heatSensitivity * delta * 60
       heatRef.current += heatIncrease
       heatRef.current = Math.min(1.3, heatRef.current) // Apple's max heat limit
       setHeatAmount(heatRef.current)
     } else if (heatRef.current > 0) {
-      heatRef.current *= 0.95 // Apple's exact decay rate
+      // Apple's exact decay rate (lines 613-614 in clean.js)
+      heatRef.current *= heatDecay
       heatRef.current = heatRef.current < 0.001 ? 0 : heatRef.current // Apple's cutoff
       setHeatAmount(heatRef.current)
+    }
+    
+    // Reset hold state after a short time if no movement (like Apple's implementation)
+    if (holdRef.current) {
+      // Add a small delay before stopping hold to allow for natural movement
+      setTimeout(() => {
+        holdRef.current = false
+      }, 100)
     }
   })
 
