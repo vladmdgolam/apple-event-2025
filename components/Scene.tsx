@@ -5,8 +5,8 @@ import { useControls } from "leva"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { OrthographicCamera, Texture } from "three"
 
-import { AppleHeatMesh } from "./AppleHeatMesh"
 import { DrawRenderer } from "./DrawRenderer"
+import { HeatMesh } from "./HeatMesh"
 
 export const Scene = ({
   containerRef,
@@ -150,7 +150,7 @@ export const Scene = ({
         fadeDamping={fadeDamping}
         radiusSize={radiusSize}
       />
-      <AppleHeatMesh drawTexture={drawTexture} />
+      <HeatMesh drawTexture={drawTexture} />
     </>
   )
 }

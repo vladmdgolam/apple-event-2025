@@ -3,11 +3,11 @@
 import { Canvas } from "@react-three/fiber"
 import { Leva } from "leva"
 import { useEffect, useRef, useState } from "react"
+
 import { InfoPanel } from "./InfoPanel"
 import { Scene } from "./Scene"
 
-
-export const AppleExactHeatmap = () => {
+export const HeatmapScene = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [levaHidden, setLevaHidden] = useState(true)
   const [isClient, setIsClient] = useState(false)

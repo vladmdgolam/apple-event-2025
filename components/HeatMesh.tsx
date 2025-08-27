@@ -6,18 +6,18 @@ import { useFrame, useLoader } from "@react-three/fiber"
 import { useControls } from "leva"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  Mesh,
-  TextureLoader,
-  VideoTexture,
+  DoubleSide,
   LinearFilter,
+  Mesh,
   RGBFormat,
   RepeatWrapping,
   ShaderMaterial,
-  DoubleSide,
   Texture,
+  TextureLoader,
+  VideoTexture,
 } from "three"
 
-export const AppleHeatMesh = ({ drawTexture }: { drawTexture: Texture | null }) => {
+export const HeatMesh = ({ drawTexture }: { drawTexture: Texture | null }) => {
   const meshRef = useRef<Mesh>(null)
   const timeRef = useRef(0)
   const videoRef = useRef<HTMLVideoElement | null>(null)

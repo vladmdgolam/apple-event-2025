@@ -32,7 +32,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the heatmap in action
 
 ## Project Structure
 
-- `components/AppleExactHeatmap.tsx` - Main heatmap component with Apple's exact implementation
+- `components/ExactHeatmap.tsx` - Main heatmap component with Apple's exact implementation
 - `components/DrawRenderer.tsx` - Modular draw renderer component (WIP)
 - `app/page.tsx` - Main page showcasing the heatmap
 
