@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Apple Shader",
   description: "•",
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
