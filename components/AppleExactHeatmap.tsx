@@ -327,7 +327,7 @@ function AppleHeatMesh({
       texture.minFilter = THREE.LinearFilter
       texture.magFilter = THREE.LinearFilter
       texture.format = THREE.RGBFormat
-      texture.flipY = false
+      texture.flipY = true  // Try flipping the video texture
       // Apple's exact texture wrapping like getBlurTexture()
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping
       setVideoTexture(texture)
@@ -506,7 +506,7 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement>
       
       // Apple's coordinate conversion (line 496-497)
       const x = 2 * (normalizedX - 0.5)
-      const y = 2 * -(normalizedY - 0.5)  // Apple inverts Y
+      const y = 2 * (normalizedY - 0.5)  // Remove the inversion, let's see
       
       setMouse([x, y])
       
