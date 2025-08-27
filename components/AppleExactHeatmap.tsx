@@ -3,7 +3,6 @@
 import drawFragmentShader from "@/shaders/draw.frag"
 import drawVertexShader from "@/shaders/draw.vert"
 import heatFragmentShader from "@/shaders/heat.frag"
-// Import shaders
 import heatVertexShader from "@/shaders/heat.vert"
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber"
 import { Leva, useControls } from "leva"
@@ -503,10 +502,19 @@ export function AppleExactHeatmap() {
             vladik.xyz
           </Link>
         </div>
+        <div>
+          <Link
+            className="underline"
+            target="_blank"
+            href="https://github.com/vladmdgolam/apple-event-2025"
+          >
+            view on github
+          </Link>
+        </div>
       </div>
 
       {/* Square canvas like Apple's implementation */}
-      <div ref={containerRef} className="w-[390px] h-[390px] touch-none">
+      <div ref={containerRef} className="w-[390px] h-[390px] touch-none select-none">
         <Canvas
           orthographic
           camera={{
