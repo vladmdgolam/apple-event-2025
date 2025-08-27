@@ -42,15 +42,26 @@ function DrawRenderer({
   const dynamicRadius = radiusSize
 
   const renderTargets = useMemo(() => {
+    // Apple's exact render target settings from Da.createRenderTarget
     const rtA = new THREE.WebGLRenderTarget(size, size, {
-      minFilter: THREE.LinearFilter,
-      magFilter: THREE.LinearFilter,
-      format: THREE.RGBAFormat,
+      type: THREE.FloatType, // Apple's 'p' type
+      format: THREE.RGBAFormat, // Apple's 'm' format  
+      internalFormat: 'RGBA16F', // Apple's exact internal format
+      minFilter: THREE.LinearFilter, // Apple's 'l'
+      magFilter: THREE.LinearFilter, // Apple's 'o'
+      generateMipmaps: true, // Apple sets this to true
+      depthBuffer: false,
+      stencilBuffer: false,
     })
     const rtB = new THREE.WebGLRenderTarget(size, size, {
-      minFilter: THREE.LinearFilter,
-      magFilter: THREE.LinearFilter,
-      format: THREE.RGBAFormat,
+      type: THREE.FloatType, // Apple's 'p' type
+      format: THREE.RGBAFormat, // Apple's 'm' format
+      internalFormat: 'RGBA16F', // Apple's exact internal format  
+      minFilter: THREE.LinearFilter, // Apple's 'l'
+      magFilter: THREE.LinearFilter, // Apple's 'o'
+      generateMipmaps: true, // Apple sets this to true
+      depthBuffer: false,
+      stencilBuffer: false,
     })
     return { current: rtA, previous: rtB }
   }, [size])
@@ -501,7 +512,7 @@ export function AppleExactHeatmap() {
       </div>
 
       {/* Square canvas like Apple's implementation */}
-      <div ref={containerRef} className="w-[80vmin] h-[80vmin] touch-none">
+      <div ref={containerRef} className="w-[390px] h-[390px] touch-none">
         <Canvas
           orthographic
           camera={{
@@ -514,10 +525,11 @@ export function AppleExactHeatmap() {
             far: 1,
           }}
           gl={{
-            antialias: false,
+            antialias: true,
             alpha: true,
-            powerPreference: "high-performance",
+            outputColorSpace: "srgb",
           }}
+          flat
         >
           <Scene containerRef={containerRef} />
         </Canvas>
