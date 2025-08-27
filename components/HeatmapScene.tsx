@@ -2,7 +2,7 @@
 
 import { Canvas } from "@react-three/fiber"
 import { Leva, levaStore } from "leva"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { InfoPanel } from "./InfoPanel"
 import { Scene } from "./Scene"
@@ -28,17 +28,8 @@ export const HeatmapScene = () => {
     return () => window.removeEventListener("keydown", handleKeyPress)
   }, [])
 
-  if (!isClient) {
-    return (
-      <div className="w-full h-screen bg-black relative flex items-center justify-center">
-        <InfoPanel />
-        <div className="w-[390px] h-[390px] bg-black" />
-      </div>
-    )
-  }
-
   // Randomize gradient colors for the heat map
-  const randomizeColors = () => {
+  const randomizeColors = useCallback(() => {
     const hslToHex = (h: number, s: number, l: number) => {
       s /= 100
       l /= 100
@@ -65,6 +56,27 @@ export const HeatmapScene = () => {
         // no-op if control not yet mounted
       }
     })
+  }, [])
+
+  // R key to randomize colors
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === "r" || e.key === "R") {
+        e.preventDefault()
+        randomizeColors()
+      }
+    }
+    window.addEventListener("keydown", handleKeyPress)
+    return () => window.removeEventListener("keydown", handleKeyPress)
+  }, [randomizeColors])
+
+  if (!isClient) {
+    return (
+      <div className="w-full h-screen bg-black relative flex items-center justify-center">
+        <InfoPanel />
+        <div className="w-[390px] h-[390px] bg-black" />
+      </div>
+    )
   }
 
   return (
