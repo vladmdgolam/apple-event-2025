@@ -115,13 +115,9 @@ void main() {
   float a = clamp(amount, 0.0, 1.0);
   float v = o * a;
 
-  vec4 tex = texture2D(maskMap, uv);
+  vec4 tex = texture2D(maskMap, uv + offset);
   float mask = tex.g;
   float logo = smoothstep(0.58, 0.6, 1.0-tex.b);
-  
-  if (logo < 0.1) {
-    discard;
-  }
 
   vec2 wuv = uv;
   vec3 draw = texture2D(drawMap, duv).rgb;
@@ -338,6 +334,8 @@ function AppleHeatMesh({
       texture.magFilter = THREE.LinearFilter
       texture.format = THREE.RGBFormat
       texture.flipY = false
+      // Apple's exact texture wrapping like getBlurTexture()
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping
       setVideoTexture(texture)
     }
     
@@ -460,7 +458,8 @@ function AppleHeatMesh({
   return (
     <mesh 
       ref={meshRef} 
-      scale={[1.5, 1.5, 1]}
+      position={[0, 0, 0]}
+      scale={[1, 1, 1]}
       onPointerMove={onPointerMove}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
@@ -504,15 +503,15 @@ function Scene() {
   }, [camera, size])
 
   const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
-    // Convert Three.js world coordinates to normalized UV coordinates
-    // e.point gives us world coordinates, we need to map to [0,1] range
-    const x = (e.point.x / 1.5 + 1) * 0.5  // Scale by mesh size and normalize to [0,1]
-    const y = (e.point.y / 1.5 + 1) * 0.5  // Scale by mesh size and normalize to [0,1]
+    // Apple's exact coordinate system: 2 * (normalizedPosition - 0.5)
+    // e.uv gives us normalized UV coordinates [0,1], convert to Apple's [-1,1] system
+    const x = 2 * (e.uv.x - 0.5)
+    const y = 2 * -(e.uv.y - 0.5)  // Apple inverts Y
     
     setMouse([x, y])
     
     if (isHolding) {
-      heatRef.current += 0.05
+      heatRef.current += 0.5 * 0.016 * 60  // Apple's exact heat buildup: 0.5 * deltaTime * 60
       setHeatAmount(Math.min(1.3, heatRef.current))
     }
   }, [isHolding])
@@ -527,7 +526,8 @@ function Scene() {
 
   useFrame(() => {
     if (!isHolding && heatRef.current > 0) {
-      heatRef.current *= 0.95 // Apple's decay rate
+      heatRef.current *= 0.95 // Apple's exact decay rate
+      heatRef.current = heatRef.current < 0.001 ? 0 : heatRef.current // Apple's cutoff
       setHeatAmount(heatRef.current)
     }
   })
