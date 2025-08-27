@@ -506,7 +506,7 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement>
       
       // Apple's coordinate conversion (line 496-497)
       const x = 2 * (normalizedX - 0.5)
-      const y = 2 * (normalizedY - 0.5)  // Remove the inversion, let's see
+      const y = 2 * -(normalizedY - 0.5)  // Apple's exact Y inversion
       
       setMouse([x, y])
       
