@@ -24,6 +24,7 @@ function DrawRenderer({
   onTextureUpdate,
   sizeDamping,
   fadeDamping,
+  radiusSize,
 }: {
   size?: number
   position: [number, number]
@@ -32,16 +33,12 @@ function DrawRenderer({
   onTextureUpdate: (texture: THREE.Texture) => void
   sizeDamping: number
   fadeDamping: number
+  radiusSize: number
 }) {
-  const { gl, size: canvasSize } = useThree()
+  const { gl } = useThree()
 
-  // Apple's mobile-specific radius calculation (line 11-12 in clean.js)
-  const radiusRatio = 1000 // Apple's radiusRatio
-  const baseRadius = isMobile() ? 350 : 220 // Apple's exact mobile vs desktop values
-  const dynamicRadius = useMemo(() => {
-    const aspectFactor = canvasSize.height / radiusRatio
-    return baseRadius * aspectFactor
-  }, [canvasSize.height])
+  // Apple's exact radius (line 42 in clean.js) - use controllable value
+  const dynamicRadius = radiusSize
 
   const renderTargets = useMemo(() => {
     const rtA = new THREE.WebGLRenderTarget(size, size, {
@@ -84,7 +81,7 @@ function DrawRenderer({
     scene.add(mesh)
 
     return { scene, camera, material }
-  }, [size, renderTargets, dynamicRadius, sizeDamping, fadeDamping])
+  }, [size, renderTargets, dynamicRadius, sizeDamping, fadeDamping, radiusSize])
 
   // Update radius when it changes
   useEffect(() => {
@@ -338,12 +335,12 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
   const { camera, size } = useThree()
 
   // Get draw renderer controls
-  const { sizeDamping, fadeDamping, heatSensitivity, heatDecay, speedThreshold } = useControls("Hover Heat", {
+  const { sizeDamping, fadeDamping, heatSensitivity, heatDecay, radiusSize } = useControls("Hover Heat", {
     sizeDamping: { value: 0.8, min: 0.0, max: 1.0, step: 0.01 },
     fadeDamping: { value: 0.98, min: 0.9, max: 1.0, step: 0.001 },
-    heatSensitivity: { value: 1.5, min: 0.1, max: 5.0, step: 0.1 },
+    heatSensitivity: { value: 0.5, min: 0.1, max: 2.0, step: 0.05 },
     heatDecay: { value: 0.95, min: 0.8, max: 0.99, step: 0.01 },
-    speedThreshold: { value: 0.001, min: 0.0001, max: 0.01, step: 0.0001 },
+    radiusSize: { value: 150, min: 50, max: 500, step: 10 },
   })
 
   // Apple's exact camera setup for orthographic projection
@@ -386,24 +383,15 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
         const x = 2 * (normalizedX - 0.5)
         const y = 2 * -(normalizedY - 0.5) // Apple's exact Y inversion
 
-        // Calculate movement speed like Apple does
-        const currentTime = performance.now()
-        const deltaTime = currentTime - lastTime.current
-        const deltaX = x - lastMousePos.current[0]
-        const deltaY = y - lastMousePos.current[1]
-        const speed = Math.sqrt(deltaX * deltaX + deltaY * deltaY) / (deltaTime + 1e-5)
-
-        // Apple's logic: set hold to true on ANY movement (line 503 in clean.js)
-        if (speed > speedThreshold || deltaX !== 0 || deltaY !== 0) {
-          holdRef.current = true
-        }
+        // Apple's exact logic: set hold to true on EVERY mouse move (line 503 in clean.js)
+        holdRef.current = true
 
         setMouse([x, y])
         lastMousePos.current = [x, y]
-        lastTime.current = currentTime
+        lastTime.current = performance.now()
       }
     },
-    [containerRef, speedThreshold]
+    [containerRef]
   )
 
   const handleDOMPointerLeave = useCallback(() => {
@@ -475,6 +463,7 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
         onTextureUpdate={setDrawTexture}
         sizeDamping={sizeDamping}
         fadeDamping={fadeDamping}
+        radiusSize={radiusSize}
       />
       <AppleHeatMesh drawTexture={drawTexture} />
     </>
