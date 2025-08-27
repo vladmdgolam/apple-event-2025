@@ -24,6 +24,7 @@ function DrawRenderer({
   onTextureUpdate,
   sizeDamping,
   fadeDamping,
+  radiusMultiplier,
 }: {
   size?: number
   position: [number, number]
@@ -32,6 +33,7 @@ function DrawRenderer({
   onTextureUpdate: (texture: THREE.Texture) => void
   sizeDamping: number
   fadeDamping: number
+  radiusMultiplier: number
 }) {
   const { gl, size: canvasSize } = useThree()
 
@@ -40,8 +42,8 @@ function DrawRenderer({
   const baseRadius = isMobile() ? 350 : 220 // Apple's exact mobile vs desktop values
   const dynamicRadius = useMemo(() => {
     const aspectFactor = canvasSize.height / radiusRatio
-    return baseRadius * aspectFactor
-  }, [canvasSize.height])
+    return baseRadius * aspectFactor * radiusMultiplier
+  }, [canvasSize.height, radiusMultiplier])
 
   const renderTargets = useMemo(() => {
     const rtA = new THREE.WebGLRenderTarget(size, size, {
@@ -84,7 +86,7 @@ function DrawRenderer({
     scene.add(mesh)
 
     return { scene, camera, material }
-  }, [size, renderTargets, dynamicRadius, sizeDamping, fadeDamping])
+  }, [size, renderTargets, dynamicRadius, sizeDamping, fadeDamping, radiusMultiplier])
 
   // Update radius when it changes
   useEffect(() => {
@@ -336,9 +338,10 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
   const { camera, size } = useThree()
 
   // Get draw renderer controls
-  const { sizeDamping, fadeDamping } = useControls("Draw Renderer", {
+  const { sizeDamping, fadeDamping, radiusMultiplier } = useControls("Draw Renderer", {
     sizeDamping: { value: 0.8, min: 0.0, max: 1.0, step: 0.01 },
     fadeDamping: { value: 0.98, min: 0.9, max: 1.0, step: 0.001 },
+    radiusMultiplier: { value: 1.0, min: 0.1, max: 3.0, step: 0.05 },
   })
 
   // Apple's exact camera setup for orthographic projection
@@ -484,6 +487,7 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement 
         onTextureUpdate={setDrawTexture}
         sizeDamping={sizeDamping}
         fadeDamping={fadeDamping}
+        radiusMultiplier={radiusMultiplier}
       />
       <AppleHeatMesh drawTexture={drawTexture} />
     </>
@@ -510,7 +514,6 @@ export function AppleExactHeatmap() {
     <div className="w-full h-screen bg-black relative flex items-center justify-center">
       <Leva hidden={levaHidden} />
       <div className="absolute top-4 left-4 text-white text-sm font-mono z-10">
-        <div>Apple Exact Implementation</div>
         <div>Hold and drag for heat effect</div>
         <div>Press L to toggle controls</div>
       </div>
