@@ -41,11 +41,12 @@ void main() {
   // Apply scale and offset transformations like Apple's implementation
   vec2 scaledUv = (uv - 0.5) * uScale + 0.5 + uOffset;
   
-  // Sample the Apple logo mask
-  vec4 maskColor = texture2D(uMaskTexture, scaledUv);
-  float mask = maskColor.a; // Use alpha channel as mask
+  // Sample the Apple logo mask exactly like Apple does
+  vec4 tex = texture2D(uMaskTexture, scaledUv);
+  float mask = tex.g; // Apple uses GREEN channel as mask
+  float logo = smoothstep(0.58, 0.6, 1.0 - tex.b); // Apple uses BLUE channel inverted for logo shape
   
-  if (mask < 0.1) {
+  if (logo < 0.1) {
     discard; // Only render where the logo is
   }
   
@@ -53,32 +54,43 @@ void main() {
   vec2 mousePos = uMouse * 0.5 + 0.5;
   float distToMouse = distance(uv, mousePos);
   
-  // Create heat effect based on Apple's shader logic
-  float heatRadius = mix(uHeatRange.x, uHeatRange.y, uHeatAmount);
-  float heatFalloff = smoothstep(heatRadius, 0.0, distToMouse);
+  // Sample heat texture (this would be the draw render target in Apple's implementation)
+  vec3 draw = texture2D(uHeatTexture, uv).rgb;
+  float heatDraw = draw.b; // Heat is stored in blue channel
+  heatDraw *= mix(0.1, 1.0, mask); // Modulate by mask like Apple
   
-  // Sample heat texture with animation
-  vec2 heatUv = uv + vec2(sin(uTime * 0.3) * 0.02, cos(uTime * 0.5) * 0.015);
-  vec3 heatColor = texture2D(uHeatTexture, heatUv).rgb;
+  // Create Apple's gradient colors
+  vec3 color1 = vec3(0.0, 0.0, 0.0);     // Black
+  vec3 color2 = vec3(0.2, 0.0, 0.4);     // Dark purple  
+  vec3 color3 = vec3(0.8, 0.0, 0.6);     // Magenta
+  vec3 color4 = vec3(1.0, 0.4, 0.0);     // Orange
+  vec3 color5 = vec3(1.0, 0.8, 0.0);     // Yellow
+  vec3 color6 = vec3(1.0, 1.0, 1.0);     // White
   
-  // Apply stretch effect like Apple
-  vec2 stretchedUv = uv;
-  stretchedUv.x = mix(uStretch.x, uStretch.y, uv.x);
-  stretchedUv.y = mix(uStretch.z, uStretch.w, uv.y);
+  // Create heat map based on distance to mouse and heat amount
+  float heatValue = uHeatAmount * (1.0 - smoothstep(0.0, 0.3, distToMouse));
+  heatValue += heatDraw * 0.5;
+  heatValue = clamp(heatValue, 0.0, 1.0);
   
-  // Combine colors - white to orange heat
-  vec3 baseColor = vec3(1.0, 1.0, 1.0); // White Apple logo
-  vec3 hotColor = vec3(1.0, 0.6, 0.2);  // Orange heat
+  // Apple's multi-stage color blending
+  vec3 finalColor = color1;
+  finalColor = mix(finalColor, color2, smoothstep(0.1, 0.2, heatValue));
+  finalColor = mix(finalColor, color3, smoothstep(0.25, 0.4, heatValue));
+  finalColor = mix(finalColor, color4, smoothstep(0.5, 0.7, heatValue));
+  finalColor = mix(finalColor, color5, smoothstep(0.75, 0.9, heatValue));
+  finalColor = mix(finalColor, color6, smoothstep(0.9, 1.0, heatValue));
   
-  float heatIntensity = heatFalloff * uHeatAmount;
-  vec3 finalColor = mix(baseColor, hotColor, heatIntensity);
+  // Add noise like Apple
+  float noise = random(uv + uTime * 0.1) * 0.05;
+  finalColor += noise;
   
-  // Add some noise for organic feel
-  float noise = random(uv + uTime * 0.1) * 0.1;
-  finalColor += noise * heatIntensity;
+  // Apply fade from center like Apple
+  float fade = distance(uv, vec2(0.5, 0.52));
+  fade = smoothstep(0.5, 0.62, 1.0 - fade);
+  finalColor *= fade;
   
-  // Final opacity with power adjustment
-  float alpha = mask * uOpacity * pow(max(0.0, 1.0 - distToMouse), uPower);
+  // Final alpha calculation
+  float alpha = logo * uOpacity;
   
   gl_FragColor = vec4(finalColor, alpha);
 }
@@ -102,8 +114,16 @@ function AppleLogoHeatmap({
   const [power, setPower] = useState(1.0)
   const timeRef = useRef(0)
 
-  // Load the Apple logo texture
+  // Load the Apple logo texture like Apple does
   const maskTexture = useLoader(THREE.TextureLoader, '/logo__dcojfwkzna2q.png')
+  
+  // Configure texture like Apple
+  useEffect(() => {
+    if (maskTexture) {
+      maskTexture.wrapS = maskTexture.wrapT = THREE.RepeatWrapping
+      maskTexture.needsUpdate = true
+    }
+  }, [maskTexture])
   
   // Create heat noise texture
   const heatTexture = useMemo(() => {
