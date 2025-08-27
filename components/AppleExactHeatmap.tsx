@@ -115,9 +115,13 @@ void main() {
   float a = clamp(amount, 0.0, 1.0);
   float v = o * a;
 
-  vec4 tex = texture2D(maskMap, uv + offset);
+  vec4 tex = texture2D(maskMap, uv);
   float mask = tex.g;
   float logo = smoothstep(0.58, 0.6, 1.0-tex.b);
+  
+  if (logo < 0.1) {
+    discard;
+  }
 
   vec2 wuv = uv;
   vec3 draw = texture2D(drawMap, duv).rgb;
@@ -145,7 +149,7 @@ void main() {
   finalColor *= fade2;
   finalColor = mix(vec3(0.0), finalColor, a);
 
-  gl_FragColor = vec4(finalColor, 1.0);
+  gl_FragColor = vec4(finalColor, logo * opacity);
 }
 `
 
@@ -294,7 +298,6 @@ function DrawRenderer({
 
 function AppleHeatMesh({
   drawTexture,
-  videoTexture,
   mouse,
   heatAmount,
   onPointerMove,
@@ -302,7 +305,6 @@ function AppleHeatMesh({
   onPointerUp
 }: {
   drawTexture: THREE.Texture | null
-  videoTexture: THREE.Texture | null
   mouse: [number, number]
   heatAmount: number
   onPointerMove: (e: ThreeEvent<PointerEvent>) => void
@@ -311,9 +313,53 @@ function AppleHeatMesh({
 }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const timeRef = useRef(0)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const [videoTexture, setVideoTexture] = useState<THREE.VideoTexture | null>(null)
 
   // Load Apple logo exactly like they do
   const maskTexture = useLoader(THREE.TextureLoader, '/logo__dcojfwkzna2q.png')
+  
+  // Setup video texture like Apple's implementation
+  useEffect(() => {
+    const video = document.createElement('video')
+    video.src = '/large_2x.mp4'
+    video.loop = true
+    video.muted = true
+    video.playsInline = true
+    video.autoplay = true
+    
+    // Apple sets video to preload and configure
+    video.preload = 'auto'
+    video.crossOrigin = 'anonymous'
+    
+    const onVideoLoad = () => {
+      const texture = new THREE.VideoTexture(video)
+      texture.minFilter = THREE.LinearFilter
+      texture.magFilter = THREE.LinearFilter
+      texture.format = THREE.RGBFormat
+      texture.flipY = false
+      setVideoTexture(texture)
+    }
+    
+    video.addEventListener('loadeddata', onVideoLoad)
+    video.load()
+    
+    // Start playing when ready
+    const playPromise = video.play()
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Autoplay was prevented, that's ok
+      })
+    }
+    
+    videoRef.current = video
+    
+    return () => {
+      video.removeEventListener('loadeddata', onVideoLoad)
+      video.pause()
+      video.src = ''
+    }
+  }, [])
   
   useEffect(() => {
     if (maskTexture) {
@@ -414,7 +460,7 @@ function AppleHeatMesh({
   return (
     <mesh 
       ref={meshRef} 
-      scale={[4, 4, 1]}
+      scale={[3, 3, 1]}
       onPointerMove={onPointerMove}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
@@ -501,7 +547,6 @@ function Scene() {
       />
       <AppleHeatMesh
         drawTexture={drawTexture}
-        videoTexture={null}
         mouse={mouse}
         heatAmount={heatAmount}
         onPointerMove={handlePointerMove}
@@ -520,25 +565,28 @@ export function AppleExactHeatmap() {
         <div>Hold and drag for heat effect</div>
       </div>
 
-      <Canvas
-        orthographic
-        camera={{ 
-          position: [0, 0, 1], 
-          left: -2, 
-          right: 2, 
-          top: 2, 
-          bottom: -2, 
-          near: -1, 
-          far: 1
-        }}
-        gl={{ 
-          antialias: false, 
-          alpha: false,
-          powerPreference: 'high-performance'
-        }}
-      >
-        <Scene />
-      </Canvas>
+      {/* Square canvas like Apple's implementation */}
+      <div className="w-[80vmin] h-[80vmin]">
+        <Canvas
+          orthographic
+          camera={{ 
+            position: [0, 0, 1], 
+            left: -2, 
+            right: 2, 
+            top: 2, 
+            bottom: -2, 
+            near: -1, 
+            far: 1
+          }}
+          gl={{ 
+            antialias: false, 
+            alpha: true,
+            powerPreference: 'high-performance'
+          }}
+        >
+          <Scene />
+        </Canvas>
+      </div>
     </div>
   )
 }
