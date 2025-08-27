@@ -4,6 +4,12 @@ import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { Canvas, useFrame, useThree, useLoader, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 
+// Mobile detection utility like Apple's Ia.isMobile()
+const isMobile = () => {
+  if (typeof window === 'undefined') return false
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0
+}
+
 // Apple's exact shader implementation
 const heatVertexShader = `
 varying vec2 vUv;
@@ -217,7 +223,15 @@ function DrawRenderer({
   drawAmount: number
   onTextureUpdate: (texture: THREE.Texture) => void
 }) {
-  const { gl } = useThree()
+  const { gl, size: canvasSize } = useThree()
+  
+  // Apple's mobile-specific radius calculation (line 11-12 in clean.js)
+  const radiusRatio = 1000 // Apple's radiusRatio
+  const baseRadius = isMobile() ? 350 : 220 // Apple's exact mobile vs desktop values
+  const dynamicRadius = useMemo(() => {
+    const aspectFactor = canvasSize.height / radiusRatio
+    return baseRadius * aspectFactor
+  }, [canvasSize.height])
   
   const renderTargets = useMemo(() => {
     const rtA = new THREE.WebGLRenderTarget(size, size, {
@@ -241,7 +255,7 @@ function DrawRenderer({
     
     const material = new THREE.ShaderMaterial({
       uniforms: {
-        uRadius: { value: [-8, 0.9, 150] }, // Apple's exact values
+        uRadius: { value: [-8, 0.9, dynamicRadius] }, // Use mobile-aware radius
         uPosition: { value: [0, 0] },
         uDirection: { value: [0, 0, 0, 0] },
         uResolution: { value: [size, size, 0] },
@@ -260,7 +274,12 @@ function DrawRenderer({
     scene.add(mesh)
     
     return { scene, camera, material }
-  }, [size, renderTargets])
+  }, [size, renderTargets, dynamicRadius])
+
+  // Update radius when it changes
+  useEffect(() => {
+    material.uniforms.uRadius.value[2] = dynamicRadius
+  }, [material, dynamicRadius])
 
   useEffect(() => {
     material.uniforms.uPosition.value = position
@@ -294,12 +313,8 @@ function DrawRenderer({
 
 function AppleHeatMesh({
   drawTexture,
-  mouse,
-  heatAmount
 }: {
   drawTexture: THREE.Texture | null
-  mouse: [number, number]
-  heatAmount: number
 }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const timeRef = useRef(0)
@@ -366,9 +381,9 @@ function AppleHeatMesh({
     
     // Convert hex colors to RGB arrays
     const hexToRGB = (hex: string): [number, number, number] => {
-      const r = parseInt(hex.substr(0, 2), 16) / 255
-      const g = parseInt(hex.substr(2, 2), 16) / 255  
-      const b = parseInt(hex.substr(4, 2), 16) / 255
+      const r = parseInt(hex.substring(0, 2), 16) / 255
+      const g = parseInt(hex.substring(2, 4), 16) / 255  
+      const b = parseInt(hex.substring(4, 6), 16) / 255
       return [r, g, b]
     }
 
@@ -441,7 +456,7 @@ function AppleHeatMesh({
     })
   }, [maskTexture, drawTexture, videoTexture])
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     timeRef.current += delta
     if (material) {
       material.uniforms.rnd.value = Math.random()
@@ -461,7 +476,7 @@ function AppleHeatMesh({
   )
 }
 
-function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement> }) {
+function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
   const [mouse, setMouse] = useState<[number, number]>([0, 0])
   const [isHolding, setIsHolding] = useState(false)
   const [heatAmount, setHeatAmount] = useState(0)
@@ -509,17 +524,32 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement>
       const y = 2 * -(normalizedY - 0.5)  // Apple's exact Y inversion
       
       setMouse([x, y])
-      
-      if (isHolding) {
-        heatRef.current += 0.5 * 0.016 * 60  // Apple's exact heat buildup
-        setHeatAmount(Math.min(1.3, heatRef.current))
+    }
+  }, [containerRef])
+
+  const handleDOMPointerDown = useCallback((e: PointerEvent) => {
+    setIsHolding(true)
+    // Apple's touch handling: on touch start, immediately trigger both enter and down
+    // This matches lines 169-182 in clean.js where touch triggers multiple callbacks
+    if (e.pointerType === 'touch') {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect()
+        const clientX = e.clientX - rect.x
+        const clientY = e.clientY - rect.y
+        
+        const normalizedX = clientX / rect.width
+        const normalizedY = clientY / rect.height
+        
+        const x = 2 * (normalizedX - 0.5)
+        const y = 2 * -(normalizedY - 0.5)
+        
+        setMouse([x, y])
+        // Immediate heat activation for touch (like Apple's handleTouchStart)
+        heatRef.current = 0.1 // Give touch a small initial boost
+        setHeatAmount(heatRef.current)
       }
     }
-  }, [isHolding, containerRef])
-
-  const handleDOMPointerDown = useCallback(() => {
-    setIsHolding(true)
-  }, [])
+  }, [containerRef])
 
   const handleDOMPointerUp = useCallback(() => {
     setIsHolding(false)
@@ -549,8 +579,14 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement>
     }
   }, [handleDOMPointerMove, handleDOMPointerDown, handleDOMPointerUp, handleDOMPointerLeave, containerRef])
 
-  useFrame(() => {
-    if (!isHolding && heatRef.current > 0) {
+  useFrame((_, delta) => {
+    if (isHolding) {
+      // Apple's exact heat buildup (line 571: this.heatUp += 0.5 * t * 60)
+      const heatIncrease = 0.5 * delta * 60
+      heatRef.current += heatIncrease
+      heatRef.current = Math.min(1.3, heatRef.current) // Apple's max heat limit
+      setHeatAmount(heatRef.current)
+    } else if (heatRef.current > 0) {
       heatRef.current *= 0.95 // Apple's exact decay rate
       heatRef.current = heatRef.current < 0.001 ? 0 : heatRef.current // Apple's cutoff
       setHeatAmount(heatRef.current)
@@ -580,8 +616,6 @@ function Scene({ containerRef }: { containerRef: React.RefObject<HTMLDivElement>
       />
       <AppleHeatMesh
         drawTexture={drawTexture}
-        mouse={mouse}
-        heatAmount={heatAmount}
       />
     </>
   )
