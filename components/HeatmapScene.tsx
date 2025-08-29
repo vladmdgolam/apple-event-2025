@@ -52,7 +52,7 @@ export const HeatmapScene = () => {
     keys.forEach((key, i) => {
       try {
         levaStore.setValueAtPath(`Heat Map.${key}`, palette[i], false)
-      } catch (e) {
+      } catch {
         // no-op if control not yet mounted
       }
     })
