@@ -6,8 +6,9 @@ import { useFrame, useThree } from "@react-three/fiber"
 import { useFBO } from "@react-three/drei"
 import { useEffect, useMemo } from "react"
 import {
-  FloatType,
+  HalfFloatType,
   LinearFilter,
+  LinearMipmapLinearFilter,
   Mesh,
   OrthographicCamera,
   PlaneGeometry,
@@ -15,13 +16,18 @@ import {
   Scene,
   ShaderMaterial,
   Texture,
+  LinearSRGBColorSpace,
 } from "three"
 
 const fboParams = {
-  type: FloatType,
+  type: HalfFloatType,
   format: RGBAFormat,
-  minFilter: LinearFilter,
+  colorSpace: LinearSRGBColorSpace,
+  depthBuffer: false,
+  stencilBuffer: false,
+  minFilter: LinearMipmapLinearFilter,
   magFilter: LinearFilter,
+  generateMipmaps: true,
 }
 
 
