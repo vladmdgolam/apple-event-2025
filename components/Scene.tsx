@@ -30,7 +30,7 @@ export const Scene = ({
       fadeDamping: { value: 0.98, min: 0.9, max: 1.0, step: 0.001 },
       heatSensitivity: { value: 0.5, min: 0.1, max: 2.0, step: 0.05 },
       heatDecay: { value: 0.95, min: 0.8, max: 0.99, step: 0.01 },
-      radiusSize: { value: 150, min: 20, max: 300, step: 5 },
+      radiusSize: { value: 85, min: 20, max: 300, step: 5 },
     }
   )
 
